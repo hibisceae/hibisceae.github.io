@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Space Playground</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .header {
+            display: none;
+        }
+
+        .main-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #fafafa;
+            padding: 0;
+            margin: 0;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 450px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls.open {
+            transform: translateX(0);
+        }
+
+        .controls-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .controls-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls-toggle.open {
+            right: 490px;
+        }
+
+        #canvas {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            cursor: grab;
+            background: transparent;
+            display: block;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: linear-gradient(145deg, #f0f0f0, #ffffff);
+            border-radius: 15px;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+        }
+
+        .control-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .matrix-input {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .matrix-2d {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .matrix-3d {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .basis-input-group {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: linear-gradient(145deg, #f8f9fa, #ffffff);
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            overflow: hidden;
+        }
+
+        .basis-input-group label {
+            display: block;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .input-row input {
+            flex: 1;
+            min-width: 60px;
+            padding: 10px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .input-row input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .vector-input-group {
+            padding: 15px;
+            background: linear-gradient(145deg, #fff3cd, #ffffff);
+            border-radius: 12px;
+            border: 2px solid #ffeaa7;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .animation-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .speed-slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .matrix-order {
+            background: linear-gradient(145deg, #e3f2fd, #f3e5f5);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #6a1b9a;
+            border: 1px solid #e1bee7;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-toggle {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+        }
+
+        .btn-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .matrix-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .matrix-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .matrix-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #495057;
+        }
+
+        .dimension-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .info-panel {
+            background: linear-gradient(145deg, #e3f2fd, #f3e5f5);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid #e1bee7;
+        }
+
+        .info-panel h4 {
+            color: #6a1b9a;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            font-size: 12px;
+            color: #4a148c;
+            line-height: 1.4;
+        }
+
+        .vector-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1002;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .vector-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.8);
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 1200px) {
+            .controls {
+                width: 400px;
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .controls {
+                width: 90vw;
+                right: 5vw;
+                left: 5vw;
+            }
+            
+            .controls-toggle {
+                right: 5vw;
+            }
+            
+            .controls-toggle.open {
+                right: calc(95vw - 60px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                padding: 15px;
+                width: 95vw;
+                right: 2.5vw;
+                left: 2.5vw;
+            }
+            
+            .controls-toggle {
+                right: 2.5vw;
+            }
+            
+            .controls-toggle.open {
+                right: calc(97.5vw - 60px);
+            }
+            
+            .control-section {
+                padding: 15px;
+            }
+            
+            .input-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .input-row input {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <button class="controls-toggle" id="controlsToggle" onclick="toggleControls()">
+            ⚙️
+        </button>
+
+        <div class="controls" id="controls">
+            <div class="control-section">
+                <h3>애니메이션 속도</h3>
+                <div class="animation-control">
+                    <span>느림</span>
+                    <input type="range" class="speed-slider" id="speedSlider" min="1" max="10" value="5">
+                    <span>빠름</span>
+                </div>
+            </div>
+
+                         <div class="control-section">
+                 
+                 <h3>기저 벡터 입력</h3>
+                <div id="basisInput">
+                    <div class="basis-input-group">
+                        <label>î (기저벡터 i):</label>
+                        <div class="input-row">
+                            <input type="number" step="0.1" value="1" id="i_x" placeholder="x">
+                            <input type="number" step="0.1" value="0" id="i_y" placeholder="y">
+                            <input type="number" step="0.1" value="0" id="i_z" placeholder="z" style="display: none;">
+                        </div>
+                    </div>
+                    <div class="basis-input-group">
+                        <label>ĵ (기저벡터 j):</label>
+                        <div class="input-row">
+                            <input type="number" step="0.1" value="0" id="j_x" placeholder="x">
+                            <input type="number" step="0.1" value="1" id="j_y" placeholder="y">
+                            <input type="number" step="0.1" value="0" id="j_z" placeholder="z" style="display: none;">
+                        </div>
+                    </div>
+                    <div class="basis-input-group" style="display: none;" id="k_basis">
+                        <label>k̂ (기저벡터 k):</label>
+                        <div class="input-row">
+                            <input type="number" step="0.1" value="0" id="k_x" placeholder="x">
+                            <input type="number" step="0.1" value="0" id="k_y" placeholder="y">
+                            <input type="number" step="0.1" value="1" id="k_z" placeholder="z">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addMatrix()">기저 적용</button>
+            </div>
+
+            <div class="control-section">
+                <h3>벡터 생성</h3>
+                <div class="vector-input-group">
+                    <label>벡터 좌표 입력:</label>
+                    <div class="input-row" style="margin-top: 8px;">
+                        <input type="number" step="0.1" value="1" id="vec_x" placeholder="x">
+                        <input type="number" step="0.1" value="1" id="vec_y" placeholder="y">
+                        <input type="number" step="0.1" value="1" id="vec_z" placeholder="z" style="display: none;">
+                    </div>
+                    <button class="btn btn-primary" onclick="addVector()" style="margin-top: 10px; width: 100%;">벡터 추가</button>
+                </div>
+                <div id="vectorList" style="max-height: 150px; overflow-y: auto; margin-top: 15px;">
+                    <!-- Vectors will be listed here -->
+                </div>
+                <button class="btn btn-danger" onclick="clearVectors()">모든 벡터 제거</button>
+            </div>
+
+            <div class="control-section">
+                <h3>적용된 행렬들</h3>
+                <div class="matrix-order" id="matrixOrder">
+                    변환 순서: 없음
+                </div>
+                <div class="matrix-list" id="matrixList">
+                    <p>적용된 행렬이 없습니다.</p>
+                </div>
+                <button class="btn btn-danger" onclick="clearAllMatrices()">모든 행렬 제거</button>
+            </div>
+
+            <div class="info-panel">
+                <h4>사용법</h4>
+                                 <p>• 우클릭 드래그로 화면을 이동할 수 있습니다<br>
+                 • 기저 벡터 값을 입력하고 '기저 적용'을 누르세요<br>
+                 • 여러 행렬을 순차적으로 적용할 수 있습니다<br>
+                 • 빨간 벡터는 x축, 초록 벡터는 y축, 파란 벡터는 z축입니다<br>
+                 • 생성된 벡터는 현재 기저에서의 좌표로 표시됩니다<br>
+                 • 벡터 위에 마우스를 올리면 상세 정보가 표시됩니다<br>
+                 • 벡터를 클릭하고 드래그하여 위치를 변경할 수 있습니다</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let is3D = false;
+        let matrices = [];
+        let vectors = [];
+        let animationId = null;
+        
+                 // Camera and interaction
+         let camera = { x: 0, y: 0, zoom: 1 };
+         let isDragging = false;
+         let lastMousePos = { x: 0, y: 0 };
+         
+         // Vector dragging
+         let isDraggingVector = false;
+         let draggedVectorIndex = -1;
+         let dragStartPos = { x: 0, y: 0 };
+         
+         // Tooltip
+         let tooltip = null;
+         let hoveredVectorIndex = -1;
+        
+        // Animation state
+        let animationProgress = 1;
+        let isAnimating = false;
+        let animationSpeed = 0.025;
+        let currentBasis = [[1, 0], [0, 1]]; // Standard basis
+        let targetBasis = [[1, 0], [0, 1]];
+        
+                 function initCanvas() {
+             canvas.width = canvas.offsetWidth;
+             canvas.height = canvas.offsetHeight;
+             
+             canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+             canvas.addEventListener('mousedown', handleMouseDown);
+             canvas.addEventListener('mousemove', handleMouseMove);
+             canvas.addEventListener('mouseup', handleMouseUp);
+             canvas.addEventListener('wheel', handleWheel);
+             
+             // Create tooltip element
+             tooltip = document.createElement('div');
+             tooltip.className = 'vector-tooltip';
+             tooltip.style.display = 'none';
+             document.body.appendChild(tooltip);
+             
+             // Speed slider event
+             document.getElementById('speedSlider').addEventListener('input', (e) => {
+                 const sliderValue = parseFloat(e.target.value);
+                 // Use a non-linear scale for more control over slower speeds
+                 animationSpeed = Math.pow(sliderValue / 10, 2) * 0.1;
+             });
+             
+             updateBasisInputs();
+             draw();
+         }
+        
+        function toggleDimension(dim) {
+            is3D = (dim === 3);
+            document.getElementById('btn2d').className = is3D ? 'btn btn-toggle' : 'btn btn-primary';
+            document.getElementById('btn3d').className = is3D ? 'btn btn-primary' : 'btn btn-toggle';
+            
+            // Reset matrices and basis
+            matrices = [];
+            vectors = [];
+            currentBasis = is3D ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : [[1, 0], [0, 1]];
+            targetBasis = [...currentBasis];
+            
+            updateBasisInputs();
+            updateMatrixList();
+            updateVectorList();
+            draw();
+        }
+        
+        function updateBasisInputs() {
+            const kBasis = document.getElementById('k_basis');
+            const zInputs = document.querySelectorAll('#i_z, #j_z, #vec_z');
+            
+            if (is3D) {
+                kBasis.style.display = 'block';
+                zInputs.forEach(input => input.style.display = 'block');
+            } else {
+                kBasis.style.display = 'none';
+                zInputs.forEach(input => input.style.display = 'none');
+            }
+        }
+        
+        function addMatrix() {
+            const dim = is3D ? 3 : 2;
+            const matrix = [];
+            
+            // Get basis vectors from inputs
+            const i_vec = [
+                parseFloat(document.getElementById('i_x').value) || 0,
+                parseFloat(document.getElementById('i_y').value) || 0
+            ];
+            const j_vec = [
+                parseFloat(document.getElementById('j_x').value) || 0,
+                parseFloat(document.getElementById('j_y').value) || 0
+            ];
+            
+            if (is3D) {
+                i_vec.push(parseFloat(document.getElementById('i_z').value) || 0);
+                j_vec.push(parseFloat(document.getElementById('j_z').value) || 0);
+                
+                const k_vec = [
+                    parseFloat(document.getElementById('k_x').value) || 0,
+                    parseFloat(document.getElementById('k_y').value) || 0,
+                    parseFloat(document.getElementById('k_z').value) || 0
+                ];
+                
+                // The transformation matrix has the new basis vectors as its columns.
+                matrix.push([i_vec[0], j_vec[0], k_vec[0]]);
+                matrix.push([i_vec[1], j_vec[1], k_vec[1]]);
+                matrix.push([i_vec[2], j_vec[2], k_vec[2]]);
+            } else {
+                // The transformation matrix has the new basis vectors as its columns.
+                matrix.push([i_vec[0], j_vec[0]]);
+                matrix.push([i_vec[1], j_vec[1]]);
+            }
+            
+            matrices.push(matrix);
+            updateMatrixList();
+            animateToNewBasis();
+        }
+        
+        function addVector() {
+            const vec = [
+                parseFloat(document.getElementById('vec_x').value) || 0,
+                parseFloat(document.getElementById('vec_y').value) || 0
+            ];
+            
+            if (is3D) {
+                vec.push(parseFloat(document.getElementById('vec_z').value) || 0);
+            }
+            
+            vectors.push({
+                original: [...vec],
+                id: Date.now()
+            });
+            
+            updateVectorList();
+            draw();
+        }
+        
+        function removeVector(id) {
+            vectors = vectors.filter(v => v.id !== id);
+            updateVectorList();
+            draw();
+        }
+        
+        function clearVectors() {
+            vectors = [];
+            updateVectorList();
+            draw();
+        }
+        
+        function updateVectorList() {
+            const vectorList = document.getElementById('vectorList');
+            
+            if (vectors.length === 0) {
+                vectorList.innerHTML = '<p style="color: #666; font-size: 12px;">생성된 벡터가 없습니다.</p>';
+                return;
+            }
+            
+            vectorList.innerHTML = '';
+            vectors.forEach((vector) => {
+                const item = document.createElement('div');
+                item.className = 'matrix-item';
+                item.style.fontSize = '12px';
+                item.style.padding = '10px';
+                
+                const display = document.createElement('div');
+                const originalCoords = getVectorInCurrentBasis(vector.original);
+                
+                if (is3D) {
+                    display.innerHTML = `
+                        <div><strong>벡터:</strong> (${vector.original[0].toFixed(1)}, ${vector.original[1].toFixed(1)}, ${vector.original[2].toFixed(1)})</div>
+                    `;
+                } else {
+                    display.innerHTML = `
+                        <div><strong>벡터:</strong> (${vector.original[0].toFixed(1)}, ${vector.original[1].toFixed(1)})</div>
+                    `;
+                }
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger';
+                removeBtn.style.fontSize = '10px';
+                removeBtn.style.padding = '5px 8px';
+                removeBtn.textContent = '×';
+                removeBtn.onclick = () => removeVector(vector.id);
+                
+                item.appendChild(display);
+                item.appendChild(removeBtn);
+                vectorList.appendChild(item);
+            });
+        }
+        
+        function getVectorInCurrentBasis(vec) {
+            if (matrices.length === 0) return [...vec];
+            
+            // Calculate the inverse transformation to get coordinates in current basis
+            const finalBasis = calculateFinalBasis();
+            return solveLinearSystem(finalBasis, vec);
+        }
+        
+        function solveLinearSystem(A, b) {
+            // Simple 2D/3D system solver using Gaussian elimination
+            const n = A.length;
+            const augmented = A.map((row, i) => [...row, b[i]]);
+            
+            // Forward elimination
+            for (let i = 0; i < n; i++) {
+                // Find pivot
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                        maxRow = k;
+                    }
+                }
+                [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+                
+                // Make all rows below this one 0 in current column
+                for (let k = i + 1; k < n; k++) {
+                    const factor = augmented[k][i] / augmented[i][i];
+                    for (let j = i; j < n + 1; j++) {
+                        augmented[k][j] -= factor * augmented[i][j];
+                    }
+                }
+            }
+            
+            // Back substitution
+            const x = new Array(n);
+            for (let i = n - 1; i >= 0; i--) {
+                x[i] = augmented[i][n];
+                for (let j = i + 1; j < n; j++) {
+                    x[i] -= augmented[i][j] * x[j];
+                }
+                x[i] /= augmented[i][i];
+            }
+            
+            return x;
+        }
+        
+        function removeMatrix(index) {
+            matrices.splice(index, 1);
+            updateMatrixList();
+            updateVectorList();
+            animateToNewBasis();
+        }
+        
+        function clearAllMatrices() {
+            matrices = [];
+            updateMatrixList();
+            updateVectorList();
+            animateToNewBasis();
+        }
+        
+        function updateMatrixList() {
+            const matrixList = document.getElementById('matrixList');
+            const matrixOrder = document.getElementById('matrixOrder');
+            
+            if (matrices.length === 0) {
+                matrixList.innerHTML = '<p>적용된 행렬이 없습니다.</p>';
+                matrixOrder.textContent = '변환 순서: 없음';
+                return;
+            }
+            
+                         // Update order display
+             const orderText = matrices.map((_, index) => `M${matrices.length - index}`).join(' × ');
+             matrixOrder.innerHTML = `변환 순서: ${orderText} × v<br><small>*가장 오른쪽 행렬(M1)부터 적용됩니다</small>`;
+            
+            matrixList.innerHTML = '';
+            for (let i = matrices.length - 1; i >= 0; i--) {
+                const matrix = matrices[i];
+                const index = i;
+                
+                const item = document.createElement('div');
+                item.className = 'matrix-item';
+                
+                const display = document.createElement('div');
+                display.className = 'matrix-display';
+                display.innerHTML = `<strong>M${index + 1}:</strong><br>${matrixToString(matrix)}`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger';
+                removeBtn.textContent = '제거';
+                removeBtn.onclick = () => removeMatrix(index);
+                
+                item.appendChild(display);
+                item.appendChild(removeBtn);
+                matrixList.appendChild(item);
+            }
+        }
+        
+        function matrixToString(matrix) {
+            if (matrix.length === 2) {
+                return `[${matrix[0][0].toFixed(1)} ${matrix[0][1].toFixed(1)}]<br>[${matrix[1][0].toFixed(1)} ${matrix[1][1].toFixed(1)}]`;
+            } else {
+                return `[${matrix[0][0].toFixed(1)} ${matrix[0][1].toFixed(1)} ${matrix[0][2].toFixed(1)}]<br>[${matrix[1][0].toFixed(1)} ${matrix[1][1].toFixed(1)} ${matrix[1][2].toFixed(1)}]<br>[${matrix[2][0].toFixed(1)} ${matrix[2][1].toFixed(1)} ${matrix[2][2].toFixed(1)}]`;
+            }
+        }
+        
+        function multiplyMatrices(a, b) {
+            const result = [];
+            for (let i = 0; i < a.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < b[0].length; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < b.length; k++) {
+                        sum += a[i][k] * b[k][j];
+                    }
+                    result[i][j] = sum;
+                }
+            }
+            return result;
+        }
+        
+                 function calculateFinalBasis() {
+             if (matrices.length === 0) {
+                 return is3D ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : [[1, 0], [0, 1]];
+             }
+             
+             let result = matrices[matrices.length - 1];
+             for (let i = matrices.length - 2; i >= 0; i--) {
+                 result = multiplyMatrices(result, matrices[i]);
+             }
+             
+             return result;
+         }
+        
+        function animateToNewBasis() {
+            const newBasis = calculateFinalBasis();
+            targetBasis = newBasis;
+            animationProgress = 0;
+            isAnimating = true;
+            animate();
+        }
+        
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+        
+        function animate() {
+            if (!isAnimating) return;
+            
+            animationProgress += animationSpeed;
+            const t = easeOutCubic(Math.min(animationProgress, 1));
+            
+            for (let i = 0; i < currentBasis.length; i++) {
+                for (let j = 0; j < currentBasis[i].length; j++) {
+                    const start = i === j ? 1 : 0; // Standard basis
+                    if (matrices.length === 0) {
+                        currentBasis[i][j] = lerp(currentBasis[i][j], start, t);
+                    } else {
+                        currentBasis[i][j] = lerp(currentBasis[i][j], targetBasis[i][j], t);
+                    }
+                }
+            }
+            
+            draw();
+            updateVectorList(); // Update vector coordinates during animation
+            
+            if (animationProgress >= 1) {
+                isAnimating = false;
+            } else {
+                requestAnimationFrame(animate);
+            }
+        }
+        
+                 function handleMouseDown(e) {
+             if (e.button === 2) { // Right click
+                 isDragging = true;
+                 lastMousePos = { x: e.clientX, y: e.clientY };
+                 canvas.style.cursor = 'grabbing';
+             } else if (e.button === 0) { // Left click
+                return;
+                 const mousePos = screenToWorld(e.clientX, e.clientY);
+                 
+                 // Check if clicking on a vector
+                 for (let i = 0; i < vectors.length; i++) {
+                     const vector = vectors[i];
+                     const transformed = matrices.length > 0 ? transformVector(vector.original) : vector.original;
+                     
+                     if (is3D) {
+                         // For 3D, check distance in projected space
+                         const center = worldToScreen(0, 0);
+                         const projX = transformed[0] * 0.866 - transformed[2] * 0.866;
+                         const projY = transformed[1] - transformed[0] * 0.5 - transformed[2] * 0.5;
+                         const projPos = worldToScreen(projX, projY);
+                         
+                         const distance = Math.sqrt(
+                             Math.pow(e.clientX - projPos.x, 2) + 
+                             Math.pow(e.clientY - projPos.y, 2)
+                         );
+                         
+                         if (distance < 20) {
+                             isDraggingVector = true;
+                             draggedVectorIndex = i;
+                             dragStartPos = { x: mousePos.x, y: mousePos.y };
+                             canvas.style.cursor = 'grabbing';
+                             return;
+                         }
+                     } else {
+                         // For 2D, check distance directly
+                         const distance = Math.sqrt(
+                             Math.pow(mousePos.x - transformed[0], 2) + 
+                             Math.pow(mousePos.y - transformed[1], 2)
+                         );
+                         
+                         if (distance < 0.5) {
+                             isDraggingVector = true;
+                             draggedVectorIndex = i;
+                             dragStartPos = { x: mousePos.x, y: mousePos.y };
+                             canvas.style.cursor = 'grabbing';
+                             return;
+                         }
+                     }
+                 }
+             }
+         }
+        
+                 function handleMouseMove(e) {
+             if (isDragging) {
+                 const dx = e.clientX - lastMousePos.x;
+                 const dy = e.clientY - lastMousePos.y;
+                 camera.x += dx;
+                 camera.y += dy;
+                 lastMousePos = { x: e.clientX, y: e.clientY };
+                 draw();
+             } else if (isDraggingVector) {
+                 const mousePos = screenToWorld(e.clientX, e.clientY);
+                 const dx = mousePos.x - dragStartPos.x;
+                 const dy = mousePos.y - dragStartPos.y;
+                 
+                 // Update vector position
+                 if (draggedVectorIndex >= 0 && draggedVectorIndex < vectors.length) {
+                     const vector = vectors[draggedVectorIndex];
+                     
+                     if (matrices.length > 0) {
+                         // If matrices are applied, we need to update the original vector
+                         // by applying the inverse transformation
+                         const finalBasis = calculateFinalBasis();
+                         const inverseBasis = getInverseMatrix(finalBasis);
+                         
+                         if (inverseBasis) {
+                             const newTransformed = [vector.original[0] + dx, vector.original[1] + dy];
+                             if (is3D) newTransformed.push(vector.original[2]);
+                             
+                             const newOriginal = multiplyMatrixVector(inverseBasis, newTransformed);
+                             vector.original = newOriginal;
+                         }
+                     } else {
+                         // No matrices, just update directly
+                         vector.original[0] += dx;
+                         vector.original[1] += dy;
+                     }
+                     
+                     dragStartPos = { x: mousePos.x, y: mousePos.y };
+                     updateVectorList();
+                     draw();
+                 }
+             } else {
+                 // Check for vector hover
+                 const mousePos = screenToWorld(e.clientX, e.clientY);
+                 let foundHover = false;
+                 
+                 for (let i = 0; i < vectors.length; i++) {
+                     const vector = vectors[i];
+                     const transformed = matrices.length > 0 ? transformVector(vector.original) : vector.original;
+                     
+                     if (is3D) {
+                         const center = worldToScreen(0, 0);
+                         const projX = transformed[0] * 0.866 - transformed[2] * 0.866;
+                         const projY = transformed[1] - transformed[0] * 0.5 - transformed[2] * 0.5;
+                         const projPos = worldToScreen(projX, projY);
+                         
+                         const distance = Math.sqrt(
+                             Math.pow(e.clientX - projPos.x, 2) + 
+                             Math.pow(e.clientY - projPos.y, 2)
+                         );
+                         
+                         if (distance < 20) {
+                             showTooltip(e.clientX, e.clientY, vector, i);
+                             foundHover = true;
+                             break;
+                         }
+                     } else {
+                         const distance = Math.sqrt(
+                             Math.pow(mousePos.x - transformed[0], 2) + 
+                             Math.pow(mousePos.y - transformed[1], 2)
+                         );
+                         
+                         if (distance < 0.5) {
+                             showTooltip(e.clientX, e.clientY, vector, i);
+                             foundHover = true;
+                             break;
+                         }
+                     }
+                 }
+                 
+                 if (!foundHover) {
+                     hideTooltip();
+                 }
+             }
+         }
+        
+                 function handleMouseUp(e) {
+             if (e.button === 2) {
+                 isDragging = false;
+                 canvas.style.cursor = 'grab';
+             } else if (e.button === 0) {
+                 if (isDraggingVector) {
+                     isDraggingVector = false;
+                     draggedVectorIndex = -1;
+                     canvas.style.cursor = 'grab';
+                 }
+             }
+         }
+        
+        function handleWheel(e) {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            camera.zoom *= zoomFactor;
+            camera.zoom = Math.max(0.1, Math.min(camera.zoom, 5));
+            draw();
+        }
+        
+        function screenToWorld(x, y) {
+            return {
+                x: (x - canvas.width/2 - camera.x) / (50 * camera.zoom),
+                y: -(y - canvas.height/2 - camera.y) / (50 * camera.zoom)
+            };
+        }
+        
+        function worldToScreen(x, y) {
+            return {
+                x: x * 50 * camera.zoom + canvas.width/2 + camera.x,
+                y: -y * 50 * camera.zoom + canvas.height/2 + camera.y
+            };
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            drawGrid();
+            
+            if (is3D) {
+                draw3D();
+            } else {
+                draw2D();
+            }
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            
+            const gridSize = 1;
+            const screenBounds = {
+                left: screenToWorld(0, 0).x,
+                right: screenToWorld(canvas.width, 0).x,
+                top: screenToWorld(0, 0).y,
+                bottom: screenToWorld(0, canvas.height).y
+            };
+            
+            // Vertical lines
+            for (let x = Math.floor(screenBounds.left); x <= Math.ceil(screenBounds.right); x += gridSize) {
+                const screenX = worldToScreen(x, 0).x;
+                ctx.beginPath();
+                ctx.moveTo(screenX, 0);
+                ctx.lineTo(screenX, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = Math.floor(screenBounds.bottom); y <= Math.ceil(screenBounds.top); y += gridSize) {
+                const screenY = worldToScreen(0, y).y;
+                ctx.beginPath();
+                ctx.moveTo(0, screenY);
+                ctx.lineTo(canvas.width, screenY);
+                ctx.stroke();
+            }
+        }
+        
+        function draw2D() {
+            const center = worldToScreen(0, 0);
+            
+            // Draw axes
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            
+            // X axis
+            ctx.beginPath();
+            ctx.moveTo(0, center.y);
+            ctx.lineTo(canvas.width, center.y);
+            ctx.stroke();
+            
+            // Y axis
+            ctx.beginPath();
+            ctx.moveTo(center.x, 0);
+            ctx.lineTo(center.x, canvas.height);
+            ctx.stroke();
+            
+            // Draw transformed grid
+            drawTransformedGrid2D();
+            
+            // Draw basis vectors
+            drawVector(currentBasis[0][0], currentBasis[1][0], '#ff4757', 'î');
+            drawVector(currentBasis[0][1], currentBasis[1][1], '#2ed573', 'ĵ');
+            
+            // Draw user vectors
+            drawUserVectors();
+        }
+        
+        function draw3D() {
+            const center = worldToScreen(0, 0);
+            
+            // Simple 3D projection (isometric)
+            function project3D(x, y, z) {
+                const projX = x * 0.866 - z * 0.866;
+                const projY = y - x * 0.5 - z * 0.5;
+                return worldToScreen(projX, projY);
+            }
+            
+            // Draw 3D axes
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            
+            // X axis (red)
+            const xAxis = project3D(5, 0, 0);
+            ctx.strokeStyle = '#ff4757';
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(xAxis.x, xAxis.y);
+            ctx.stroke();
+            
+            // Y axis (green)
+            const yAxis = project3D(0, 5, 0);
+            ctx.strokeStyle = '#2ed573';
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(yAxis.x, yAxis.y);
+            ctx.stroke();
+            
+            // Z axis (blue)
+            const zAxis = project3D(0, 0, 5);
+            ctx.strokeStyle = '#3742fa';
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(zAxis.x, zAxis.y);
+            ctx.stroke();
+            
+            // Draw transformed basis vectors
+            const v1 = project3D(currentBasis[0][0], currentBasis[1][0], currentBasis[2][0]);
+            const v2 = project3D(currentBasis[0][1], currentBasis[1][1], currentBasis[2][1]);
+            const v3 = project3D(currentBasis[2][0], currentBasis[2][1], currentBasis[2][2]);
+            
+            drawVector3D(v1.x - center.x, v1.y - center.y, '#ff4757', 'î');
+            drawVector3D(v2.x - center.x, v2.y - center.y, '#2ed573', 'ĵ');
+            drawVector3D(v3.x - center.x, v3.y - center.y, '#3742fa', 'k̂');
+            
+            // Draw user vectors in 3D
+            drawUserVectors3D(project3D);
+        }
+        
+        function drawTransformedGrid2D() {
+            if (matrices.length === 0) return;
+
+            ctx.strokeStyle = 'rgba(102, 126, 234, 0.6)';
+            ctx.lineWidth = 1;
+
+            const inverseBasis = getInverseMatrix(currentBasis);
+            if (!inverseBasis) return;
+
+            // Get screen corners in world coordinates
+            const corners = [
+                screenToWorld(0, 0),
+                screenToWorld(canvas.width, 0),
+                screenToWorld(canvas.width, canvas.height),
+                screenToWorld(0, canvas.height)
+            ];
+
+            // Transform screen corners to original grid space
+            const originalCorners = corners.map(c => {
+                const vec = [c.x, c.y];
+                const transformed = multiplyMatrixVector(inverseBasis, vec);
+                return { x: transformed[0], y: transformed[1] };
+            });
+
+            // Find bounding box in original grid space
+            const minX = Math.min(...originalCorners.map(c => c.x));
+            const maxX = Math.max(...originalCorners.map(c => c.x));
+            const minY = Math.min(...originalCorners.map(c => c.y));
+            const maxY = Math.max(...originalCorners.map(c => c.y));
+
+            const safetyMargin = 1;
+            const startX = Math.floor(minX - safetyMargin);
+            const endX = Math.ceil(maxX + safetyMargin);
+            const startY = Math.floor(minY - safetyMargin);
+            const endY = Math.ceil(maxY + safetyMargin);
+            
+            const maxLines = 200; // Performance guard
+            if ((endX - startX) > maxLines || (endY - startY) > maxLines) {
+                return; 
+            }
+
+            // Draw transformed grid lines
+            for (let i = startX; i <= endX; i++) {
+                // Vertical lines
+                const p1 = transformPoint(i, startY);
+                const p2 = transformPoint(i, endY);
+                const s1 = worldToScreen(p1.x, p1.y);
+                const s2 = worldToScreen(p2.x, p2.y);
+                
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.lineTo(s2.x, s2.y);
+                ctx.stroke();
+            }
+
+            for (let i = startY; i <= endY; i++) {
+                // Horizontal lines
+                const p3 = transformPoint(startX, i);
+                const p4 = transformPoint(endX, i);
+                const s3 = worldToScreen(p3.x, p3.y);
+                const s4 = worldToScreen(p4.x, p4.y);
+                
+                ctx.beginPath();
+                ctx.moveTo(s3.x, s3.y);
+                ctx.lineTo(s4.x, s4.y);
+                ctx.stroke();
+            }
+        }
+        
+        function transformPoint(x, y) {
+            return {
+                x: x * currentBasis[0][0] + y * currentBasis[0][1],
+                y: x * currentBasis[1][0] + y * currentBasis[1][1]
+            };
+        }
+        
+        function drawVector(x, y, color, label) {
+            const start = worldToScreen(0, 0);
+            const end = worldToScreen(x, y);
+            
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+            
+            // Draw line
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            // Draw arrowhead
+            const angle = Math.atan2(end.y - start.y, end.x - start.x);
+            const arrowLength = 15;
+            
+            ctx.beginPath();
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(
+                end.x - arrowLength * Math.cos(angle - Math.PI/6),
+                end.y - arrowLength * Math.sin(angle - Math.PI/6)
+            );
+            ctx.lineTo(
+                end.x - arrowLength * Math.cos(angle + Math.PI/6),
+                end.y - arrowLength * Math.sin(angle + Math.PI/6)
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw label
+            ctx.font = '18px Arial';
+            ctx.fillText(label, end.x + 10, end.y - 10);
+        }
+        
+                 function drawUserVectors() {
+             vectors.forEach((vector, index) => {
+                 const colors = ['#e67e22', '#9b59b6', '#1abc9c', '#f1c40f', '#e84393'];
+                 const color = colors[index % colors.length];
+                 
+                 // Draw original vector (dashed)
+                 drawDashedVector(vector.original[0], vector.original[1], color, `v${index + 1}`);
+                 
+                 // Draw transformed vector (solid) if matrices are applied
+                 if (matrices.length > 0) {
+                     const transformed = transformVector(vector.original);
+                     drawVector(transformed[0], transformed[1], color, `v${index + 1}'`);
+                 }
+             });
+         }
+        
+                 function drawUserVectors3D(project3D) {
+             vectors.forEach((vector, index) => {
+                 const colors = ['#e67e22', '#9b59b6', '#1abc9c', '#f1c40f', '#e84393'];
+                 const color = colors[index % colors.length];
+                 
+                 const center = worldToScreen(0, 0);
+                 
+                 // Draw original vector (dashed)
+                 const origProj = project3D(vector.original[0], vector.original[1], vector.original[2]);
+                 drawDashedVector3D(origProj.x - center.x, origProj.y - center.y, color, `v${index + 1}`);
+                 
+                 // Draw transformed vector (solid) if matrices are applied
+                 if (matrices.length > 0) {
+                     const transformed = transformVector(vector.original);
+                     const transProj = project3D(transformed[0], transformed[1], transformed[2]);
+                     drawVector3D(transProj.x - center.x, transProj.y - center.y, color, `v${index + 1}'`);
+                 }
+             });
+         }
+            
+        
+                 function drawDashedVector(x, y, color, label) {
+             const start = worldToScreen(0, 0);
+             const end = worldToScreen(x, y);
+             
+             ctx.strokeStyle = color;
+             ctx.fillStyle = color;
+             ctx.lineWidth = 2;
+             
+             // Draw dashed line
+             ctx.setLineDash([5, 5]);
+             ctx.beginPath();
+             ctx.moveTo(start.x, start.y);
+             ctx.lineTo(end.x, end.y);
+             ctx.stroke();
+             ctx.setLineDash([]);
+             
+             // Draw arrowhead
+             const angle = Math.atan2(end.y - start.y, end.x - start.x);
+             const arrowLength = 12;
+             
+             ctx.beginPath();
+             ctx.moveTo(end.x, end.y);
+             ctx.lineTo(
+                 end.x - arrowLength * Math.cos(angle - Math.PI/6),
+                 end.y - arrowLength * Math.sin(angle - Math.PI/6)
+             );
+             ctx.lineTo(
+                 end.x - arrowLength * Math.cos(angle + Math.PI/6),
+                 end.y - arrowLength * Math.sin(angle + Math.PI/6)
+             );
+             ctx.closePath();
+             ctx.fill();
+             
+             // Draw label
+             ctx.font = '16px Arial';
+             ctx.fillText(label, end.x + 8, end.y - 8);
+         }
+         
+         function drawDashedVector3D(x, y, color, label) {
+             const start = worldToScreen(0, 0);
+             const end = { x: start.x + x, y: start.y + y };
+             
+             ctx.strokeStyle = color;
+             ctx.fillStyle = color;
+             ctx.lineWidth = 2;
+             
+             // Draw dashed line
+             ctx.setLineDash([5, 5]);
+             ctx.beginPath();
+             ctx.moveTo(start.x, start.y);
+             ctx.lineTo(end.x, end.y);
+             ctx.stroke();
+             ctx.setLineDash([]);
+             
+             // Draw arrowhead
+             const angle = Math.atan2(y, x);
+             const arrowLength = 12;
+             
+             ctx.beginPath();
+             ctx.moveTo(end.x, end.y);
+             ctx.lineTo(
+                 end.x - arrowLength * Math.cos(angle - Math.PI/6),
+                 end.y - arrowLength * Math.sin(angle - Math.PI/6)
+             );
+             ctx.lineTo(
+                 end.x - arrowLength * Math.cos(angle + Math.PI/6),
+                 end.y - arrowLength * Math.sin(angle + Math.PI/6)
+             );
+             ctx.closePath();
+             ctx.fill();
+             
+             // Draw label
+             ctx.font = '16px Arial';
+             ctx.fillText(label, end.x + 8, end.y - 8);
+         }
+        
+                 function drawVector3D(x, y, color, label) {
+             const start = worldToScreen(0, 0);
+             const end = { x: start.x + x, y: start.y + y };
+             
+             ctx.strokeStyle = color;
+             ctx.fillStyle = color;
+             ctx.lineWidth = 3;
+             
+             // Draw line
+             ctx.beginPath();
+             ctx.moveTo(start.x, start.y);
+             ctx.lineTo(end.x, end.y);
+             ctx.stroke();
+             
+             // Draw arrowhead
+             const angle = Math.atan2(y, x);
+             const arrowLength = 15;
+             
+             ctx.beginPath();
+             ctx.moveTo(end.x, end.y);
+             ctx.lineTo(
+                 end.x - arrowLength * Math.cos(angle - Math.PI/6),
+                 end.y - arrowLength * Math.sin(angle - Math.PI/6)
+             );
+             ctx.lineTo(
+                 end.x - arrowLength * Math.cos(angle + Math.PI/6),
+                 end.y - arrowLength * Math.sin(angle + Math.PI/6)
+             );
+             ctx.closePath();
+             ctx.fill();
+             
+             // Draw label
+             ctx.font = '18px Arial';
+             ctx.fillText(label, end.x + 10, end.y - 10);
+         }
+         
+         function transformVector(vec) {
+             if (matrices.length === 0) return [...vec];
+             
+             // Apply all transformations in order (first applied first)
+             let result = [...vec];
+             for (let i = 0; i < matrices.length; i++) {
+                 result = multiplyMatrixVector(matrices[i], result);
+             }
+             return result;
+         }
+         
+         function multiplyMatrixVector(matrix, vector) {
+             const result = [];
+             for (let i = 0; i < matrix.length; i++) {
+                 let sum = 0;
+                 for (let j = 0; j < vector.length; j++) {
+                     sum += matrix[i][j] * vector[j];
+                 }
+                 result[i] = sum;
+             }
+             return result;
+         }
+         
+         function getInverseMatrix(matrix) {
+             const n = matrix.length;
+             if (n === 2) {
+                 const det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+                 if (Math.abs(det) < 1e-10) return null;
+                 
+                 const invDet = 1 / det;
+                 return [
+                     [matrix[1][1] * invDet, -matrix[0][1] * invDet],
+                     [-matrix[1][0] * invDet, matrix[0][0] * invDet]
+                 ];
+             } else if (n === 3) {
+                 // 3x3 matrix inverse using cofactor method
+                 const det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
+                           matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) +
+                           matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+                 
+                 if (Math.abs(det) < 1e-10) return null;
+                 
+                 const invDet = 1 / det;
+                 const result = [];
+                 
+                 for (let i = 0; i < 3; i++) {
+                     result[i] = [];
+                     for (let j = 0; j < 3; j++) {
+                         // Calculate cofactor of (j, i) for the adjugate matrix
+                         const cofactor = Math.pow(-1, j + i) * (
+                             matrix[(j + 1) % 3][(i + 1) % 3] * matrix[(j + 2) % 3][(i + 2) % 3] -
+                             matrix[(j + 1) % 3][(i + 2) % 3] * matrix[(j + 2) % 3][(i + 1) % 3]
+                         );
+                         result[i][j] = cofactor * invDet;
+                     }
+                 }
+                 
+                 return result;
+             }
+             return null;
+         }
+         
+         function showTooltip(x, y, vector, index) {
+             if (hoveredVectorIndex !== index) {
+                 hoveredVectorIndex = index;
+                 
+                 const transformed = matrices.length > 0 ? transformVector(vector.original) : vector.original;
+                 const currentCoords = getVectorInCurrentBasis(vector.original);
+                 
+                 let tooltipText = `벡터 ${index + 1}`;
+                 
+                 if (is3D) {
+                     tooltipText += `<br>원본: (${vector.original[0].toFixed(2)}, ${vector.original[1].toFixed(2)}, ${vector.original[2].toFixed(2)})`;
+                     tooltipText += `<br>변환: (${transformed[0].toFixed(2)}, ${transformed[1].toFixed(2)}, ${transformed[2].toFixed(2)})`;
+                 } else {
+                     tooltipText += `<br>원본: (${vector.original[0].toFixed(2)}, ${vector.original[1].toFixed(2)})`;
+                     tooltipText += `<br>변환: (${transformed[0].toFixed(2)}, ${transformed[1].toFixed(2)})`;
+                 }
+                 
+                 tooltip.innerHTML = tooltipText;
+                 tooltip.style.display = 'block';
+             }
+             
+             tooltip.style.left = (x + 15) + 'px';
+             tooltip.style.top = (y - 15) + 'px';
+         }
+         
+         function hideTooltip() {
+             if (hoveredVectorIndex !== -1) {
+                 hoveredVectorIndex = -1;
+                 tooltip.style.display = 'none';
+             }
+         }
+        
+                 // Controls toggle functionality
+         function toggleControls() {
+             const controls = document.getElementById('controls');
+             const toggle = document.getElementById('controlsToggle');
+             
+             if (controls.classList.contains('open')) {
+                 controls.classList.remove('open');
+                 toggle.classList.remove('open');
+                 toggle.innerHTML = '⚙️';
+             } else {
+                 controls.classList.add('open');
+                 toggle.classList.add('open');
+                 toggle.innerHTML = '✕';
+             }
+         }
+
+         // Initialize
+         window.onload = () => {
+             initCanvas();
+             updateBasisInputs();
+         };
+         
+         window.onresize = () => {
+             canvas.width = canvas.offsetWidth;
+             canvas.height = canvas.offsetHeight;
+             draw();
+         };
+         
+         // Clean up tooltip on page unload
+         window.onbeforeunload = () => {
+             if (tooltip && tooltip.parentNode) {
+                 tooltip.parentNode.removeChild(tooltip);
+             }
+         };
+    </script>
+</body>
+</html>
