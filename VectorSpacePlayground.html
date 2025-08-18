@@ -512,6 +512,7 @@
         let isAnimating = false;
         let animationSpeed = 0.025;
         let currentBasis = [[1, 0], [0, 1]]; // Standard basis
+        let startBasis = [[1, 0], [0, 1]]; // Standard basis
         let targetBasis = [[1, 0], [0, 1]];
         
                  function initCanvas() {
@@ -816,6 +817,7 @@
          }
         
         function animateToNewBasis() {
+            startBasis = [...currentBasis.map(row => [...row])];
             const newBasis = calculateFinalBasis();
             targetBasis = newBasis;
             animationProgress = 0;
@@ -841,9 +843,9 @@
                 for (let j = 0; j < currentBasis[i].length; j++) {
                     const start = i === j ? 1 : 0; // Standard basis
                     if (matrices.length === 0) {
-                        currentBasis[i][j] = lerp(currentBasis[i][j], start, t);
+                        currentBasis[i][j] = lerp(startBasis[i][j], start, t);
                     } else {
-                        currentBasis[i][j] = lerp(currentBasis[i][j], targetBasis[i][j], t);
+                        currentBasis[i][j] = lerp(startBasis[i][j], targetBasis[i][j], t);
                     }
                 }
             }
