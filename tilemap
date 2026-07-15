@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tile Map Editor</title>
+<style>
+  :root{
+    --bg-0:#1b1d22;
+    --bg-1:#22252c;
+    --bg-2:#2a2e37;
+    --bg-3:#333844;
+    --line:#3c4150;
+    --text-0:#e8eaf0;
+    --text-1:#a7adba;
+    --text-2:#6f7583;
+    --accent:#5b8cff;
+    --accent-2:#ffb454;
+    --danger:#ff5c72;
+    --ok:#5ed6a5;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Malgun Gothic", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg-0);
+    color:var(--text-0);
+    font-family:var(--sans);
+    font-size:13px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  button{
+    font-family:inherit;font-size:12px;color:var(--text-0);
+    background:var(--bg-3);border:1px solid var(--line);border-radius:6px;
+    padding:6px 10px;cursor:pointer;transition:.12s;
+  }
+  button:hover{background:#3c4150;border-color:#4a5064;}
+  button:active{transform:translateY(1px);}
+  button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.icon{padding:6px 8px;min-width:32px;}
+  button.danger:hover{border-color:var(--danger);color:var(--danger);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  input,select{
+    font-family:inherit;font-size:12px;color:var(--text-0);
+    background:var(--bg-1);border:1px solid var(--line);border-radius:5px;
+    padding:5px 7px;
+  }
+  input[type=number]{width:64px;}
+  input[type=text]{width:100%;}
+  label.field{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-1);}
+  h1,h2,h3{margin:0;font-weight:600;}
+  .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px;}
+  .hint{color:var(--text-2);font-size:11px;}
+  .badge{font-size:10px;padding:2px 6px;border-radius:10px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--line);}
+
+  /* ---- layout ---- */
+  #topbar{
+    display:flex;align-items:center;gap:6px;
+    padding:8px 12px;background:var(--bg-1);border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  #topbar .brand{font-weight:700;font-size:14px;letter-spacing:.2px;margin-right:8px;color:var(--text-0);
+    display:flex;align-items:center;gap:6px;}
+  #topbar .brand .dot{width:8px;height:8px;border-radius:2px;background:var(--accent);}
+  #app{flex:1;display:flex;min-height:0;}
+  #sidebar{
+    width:300px;min-width:300px;background:var(--bg-1);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  #sidebar .tabs{display:flex;border-bottom:1px solid var(--line);}
+  #sidebar .tabs button{flex:1;border-radius:0;border:none;border-right:1px solid var(--line);background:transparent;}
+  #sidebar .tabs button:last-child{border-right:none;}
+  #sidebar .tabs button.active{background:var(--bg-2);color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent);}
+  #sidebar .panel{flex:1;overflow-y:auto;padding:10px;display:none;}
+  #sidebar .panel.active{display:block;}
+  .section-title{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-2);margin:12px 0 6px;}
+  .section-title:first-child{margin-top:0;}
+
+  #canvas-wrap{
+    flex:1;position:relative;overflow:auto;background:
+      linear-gradient(45deg,#26292f 25%,transparent 25%),
+      linear-gradient(-45deg,#26292f 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#26292f 75%),
+      linear-gradient(-45deg,transparent 75%,#26292f 75%);
+    background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0;
+    background-color:#1e2025;
+  }
+  #canvas-stage{position:relative;padding:40px;display:inline-block;min-width:100%;min-height:100%;}
+  #mapCanvas{image-rendering:pixelated;display:block;box-shadow:0 0 0 1px #000, 0 8px 30px rgba(0,0,0,.5);}
+
+  /* tileset list */
+  .tileset-item{
+    border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;background:var(--bg-2);
+  }
+  .tileset-item.selected{border-color:var(--accent);}
+  .tileset-item .row{display:flex;justify-content:space-between;align-items:center;gap:6px;}
+  .tileset-item img{max-width:100%;image-rendering:pixelated;border-radius:4px;margin-top:6px;display:block;}
+  .tileset-name{font-weight:600;font-size:12.5px;}
+  .tileset-meta{font-size:10.5px;color:var(--text-2);}
+
+  #tilePickerWrap{border:1px solid var(--line);border-radius:8px;background:var(--bg-2);overflow:auto;max-height:260px;position:relative;}
+  #tilePicker{image-rendering:pixelated;display:block;cursor:crosshair;}
+
+  /* layers */
+  .layer-item{
+    display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:7px;border:1px solid var(--line);
+    background:var(--bg-2);margin-bottom:6px;cursor:pointer;
+  }
+  .layer-item.active{border-color:var(--accent);background:#26304a;}
+  .layer-item .name{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .layer-item .sub{font-size:10px;color:var(--text-2);}
+  .layer-item button{padding:3px 6px;font-size:11px;}
+
+  .tag-item{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border:1px solid var(--line);
+    border-radius:6px;background:var(--bg-2);margin-bottom:5px;font-size:12px;}
+  .tag-item .coord{color:var(--text-2);font-family:var(--mono);font-size:10.5px;}
+
+  #toolGroup button{padding:7px 9px;}
+  .toolbar-row{display:flex;align-items:center;gap:4px;}
+
+  #dropzone{
+    border:1.5px dashed var(--line);border-radius:10px;padding:18px 10px;text-align:center;color:var(--text-2);
+    font-size:12px;cursor:pointer;
+  }
+  #dropzone:hover{border-color:var(--accent);color:var(--text-1);}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--bg-1);border:1px solid var(--line);border-radius:12px;padding:20px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .modal h3{margin-bottom:14px;}
+  .modal .field-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+
+  #autosaveBar{
+    display:none;align-items:center;gap:10px;background:#2a2f21;border-bottom:1px solid #4a5a2c;
+    padding:8px 14px;font-size:12px;color:#d8e6b8;
+  }
+  #autosaveBar.show{display:flex;}
+  #autosaveBar button{padding:4px 10px;}
+
+  #statusbar{
+    display:flex;align-items:center;gap:14px;padding:5px 14px;background:var(--bg-1);border-top:1px solid var(--line);
+    font-size:11px;color:var(--text-2);
+  }
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:#3a3f4c;border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+
+<div id="autosaveBar">
+  <span>⚠ 이전에 자동 저장된 작업이 있습니다. 이어서 작업하시겠습니까?</span>
+  <button id="restoreBtn">복구하기</button>
+  <button id="dismissAutosaveBtn">무시</button>
+</div>
+
+<div id="topbar">
+  <div class="brand"><span class="dot"></span>Tile Map Editor</div>
+  <input type="text" id="projectNameInput" title="프로젝트 이름" value="Untitled Project" style="width:150px;margin-right:6px;">
+  <div class="sep"></div>
+  <div class="toolbar-row">
+    <button id="newProjectBtn" title="새 프로젝트">새 프로젝트</button>
+    <button id="saveProjectBtn" title="프로젝트 저장 (이미지 포함, 이어작업용)">💾 프로젝트 저장</button>
+    <button id="loadProjectBtn" title="저장된 프로젝트 불러오기">📂 프로젝트 불러오기</button>
+    <button id="exportGameBtn" title="게임 엔진용 JSON 내보내기 (이미지 데이터 제외)">⬇ 게임용 내보내기</button>
+    <button id="exportZipBtn" title="타일셋 이미지 + 맵 JSON을 압축(zip)으로 내보내기">📦 최종 내보내기 (ZIP)</button>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-row" id="toolGroup">
+    <button class="icon active" data-tool="pencil" title="Pencil (B)">✏️</button>
+    <button class="icon" data-tool="eraser" title="Eraser (E)">🧽</button>
+    <button class="icon" data-tool="rect" title="Rectangle Fill (R)">▭</button>
+    <button class="icon" data-tool="bucket" title="Bucket Fill (G)">🪣</button>
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-row" id="modeGroup">
+    <button class="active" data-mode="tile" title="타일 편집">🧱 Tile</button>
+    <button data-mode="collision" title="충돌 편집">🚧 Collision</button>
+    <button data-mode="tag" title="태그 편집">🏷 Tag</button>
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-row">
+    <button id="undoBtn" title="실행 취소 (Ctrl+Z)">↶ Undo</button>
+    <button id="redoBtn" title="다시 실행 (Ctrl+Shift+Z)">↷ Redo</button>
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-row">
+    <button id="gridBtn" class="active" title="격자 표시">#️⃣ Grid</button>
+    <button id="zoomOutBtn" class="icon">−</button>
+    <span class="badge" id="zoomLabel">100%</span>
+    <button id="zoomInBtn" class="icon">+</button>
+  </div>
+  <div style="flex:1"></div>
+  <span class="hint" id="autosaveHint">자동 저장 대기 중…</span>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="tabs">
+      <button data-panel="tilesets" class="active">Tilesets</button>
+      <button data-panel="layers">Layers</button>
+      <button data-panel="tags">Tags</button>
+    </div>
+
+    <!-- TILESETS PANEL -->
+    <div class="panel active" id="panel-tilesets">
+      <div id="currentLayerBanner" style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;">
+        <div style="color:var(--text-2);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">현재 레이어</div>
+        <div style="font-weight:600;" id="currentLayerName">-</div>
+        <div style="color:var(--text-2);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 2px;">사용 중인 타일셋</div>
+        <div style="font-weight:600;color:var(--accent);" id="currentLayerTileset">지정된 타일셋 없음</div>
+      </div>
+
+      <div class="section-title">타일셋 추가</div>
+      <div id="dropzone">PNG 타일셋 이미지를 선택하세요<br><span class="hint">클릭하여 파일 선택</span></div>
+      <input type="file" id="tilesetFile" accept="image/png" style="display:none;">
+
+      <div class="section-title">등록된 타일셋</div>
+      <div class="hint" style="margin-bottom:6px;">타일셋을 클릭하면 현재 선택된 레이어에 지정됩니다.</div>
+      <div id="tilesetList"></div>
+
+      <div class="section-title">타일 선택 (현재 레이어: <span id="pickerLayerName">-</span>)</div>
+      <div id="tilePickerWrap"><canvas id="tilePicker" width="1" height="1"></canvas></div>
+      <div class="hint" style="margin-top:6px;">선택한 타일: <span id="selectedTileLabel">없음</span></div>
+    </div>
+
+    <!-- LAYERS PANEL -->
+    <div class="panel" id="panel-layers">
+      <div class="section-title">레이어 목록</div>
+      <div id="layerList"></div>
+      <button id="addLayerBtn" style="width:100%;margin-top:4px;">+ 레이어 추가</button>
+
+      <div class="section-title">선택한 레이어 설정</div>
+      <div id="layerSettings" class="hint">레이어를 선택하세요.</div>
+
+      <div class="section-title">맵 설정</div>
+      <label class="field" style="margin-bottom:6px;">Width <input type="number" id="mapWidthInput" min="1"></label>
+      <label class="field" style="margin-bottom:6px;">Height <input type="number" id="mapHeightInput" min="1"></label>
+      <label class="field">Tile Size <input type="number" id="tileSizeInput" min="1"></label>
+      <div class="hint" style="margin-top:6px;">⚠ 맵 크기 변경 시 데이터가 새로 정렬됩니다.</div>
+      <button id="applyMapSettingsBtn" style="width:100%;margin-top:8px;">맵 설정 적용</button>
+    </div>
+
+    <!-- TAGS PANEL -->
+    <div class="panel" id="panel-tags">
+      <div class="section-title">태그 배치 방법</div>
+      <div class="hint">상단에서 Tag 모드를 선택한 뒤, 맵을 클릭하면 태그를 추가할 수 있습니다.</div>
+      <div class="section-title">등록된 태그 (<span id="tagCount">0</span>)</div>
+      <div id="tagList"></div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="canvas-stage">
+      <canvas id="mapCanvas" width="10" height="10"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span id="statusCoord">-, -</span>
+  <span id="statusMode">Mode: Tile</span>
+  <span id="statusTool">Tool: Pencil</span>
+  <span id="statusLayer">Layer: -</span>
+  <span style="flex:1"></span>
+  <span id="statusSize">-</span>
+</div>
+
+<!-- New Project Modal -->
+<div class="modal-overlay" id="newProjectModal">
+  <div class="modal">
+    <h3>새 프로젝트</h3>
+    <div class="field-row"><span>프로젝트 이름</span><input type="text" id="npName" value="Untitled Project"></div>
+    <div class="field-row"><span>Width (타일 수)</span><input type="number" id="npWidth" value="64" min="1"></div>
+    <div class="field-row"><span>Height (타일 수)</span><input type="number" id="npHeight" value="32" min="1"></div>
+    <div class="field-row"><span>Tile Size (px)</span><input type="number" id="npTileSize" value="16" min="1"></div>
+    <div class="actions">
+      <button id="npCancel">취소</button>
+      <button id="npCreate" class="active">생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tag Modal -->
+<div class="modal-overlay" id="tagModal">
+  <div class="modal">
+    <h3>태그 추가</h3>
+    <div class="hint" style="margin-bottom:10px;" id="tagModalCoord">좌표: -</div>
+    <label class="field" style="display:block;margin-bottom:4px;color:var(--text-1);">Key</label>
+    <select id="tagPreset" style="width:100%;margin-bottom:8px;">
+      <option value="PLAYER_SPAWN">PLAYER_SPAWN</option>
+      <option value="NPC">NPC</option>
+      <option value="CHEST">CHEST</option>
+      <option value="PORTAL">PORTAL</option>
+      <option value="SAVE_POINT">SAVE_POINT</option>
+      <option value="__custom__">직접 입력…</option>
+    </select>
+    <input type="text" id="tagCustom" placeholder="태그 키 입력 (예: NPC_ID)" style="display:none;margin-bottom:8px;width:100%;">
+    <label class="field" style="display:block;margin-bottom:4px;color:var(--text-1);">Value <span class="hint">(선택 사항)</span></label>
+    <input type="text" id="tagValueInput" placeholder="값 입력 (예: guard_01)" style="width:100%;margin-bottom:8px;">
+    <div id="tagModalExisting"></div>
+    <div class="actions">
+      <button id="tagCancel">닫기</button>
+      <button id="tagAdd" class="active">추가</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ===================== STATE ===================== */
+const EMPTY = -1;
+let state = null;          // current project (serializable, minus decoded Image objects)
+let imageCache = {};        // tilesetId -> HTMLImageElement
+let undoStack = [];
+let redoStack = [];
+let zoom = 1;
+let showGrid = true;
+let selectedTilesetId = null;
+let selectedTileIndex = null;
+let activeLayerId = null;
+let currentTool = 'pencil';
+let currentMode = 'tile';   // 'tile' | 'collision' | 'tag'
+let isPainting = false;
+let rectStart = null;
+let lastPaintedIdx = -1;
+let dirty = false;
+
+const el = (id)=>document.getElementById(id);
+const mapCanvas = el('mapCanvas');
+const mctx = mapCanvas.getContext('2d');
+const tilePicker = el('tilePicker');
+const pctx = tilePicker.getContext('2d');
+
+function uid(prefix){ return prefix+'_'+Math.random().toString(36).slice(2,9); }
+
+function defaultProject(name, width, height, tileSize){
+  const size = width*height;
+  return {
+    version: 1,
+    name: name || 'Untitled Project',
+    width, height, tileSize,
+    tilesets: [],
+    layers: [
+      { id: uid('layer'), name:'Ground', tileset:null, visible:true, data: new Array(size).fill(EMPTY) }
+    ],
+    collision: new Array(size).fill(0),
+    tags: []
+  };
+}
+
+/* ===================== HISTORY (undo/redo) ===================== */
+function snapshot(){
+  // Deep clone of editable state (images excluded, kept in imageCache separately)
+  return JSON.parse(JSON.stringify(state));
+}
+function pushHistory(){
+  undoStack.push(snapshot());
+  if(undoStack.length>60) undoStack.shift();
+  redoStack.length = 0;
+  updateHistoryButtons();
+}
+function undo(){
+  if(!undoStack.length) return;
+  redoStack.push(snapshot());
+  state = undoStack.pop();
+  ensureActiveLayerValid();
+  updateHistoryButtons();
+  fullRefresh();
+}
+function redo(){
+  if(!redoStack.length) return;
+  undoStack.push(snapshot());
+  state = redoStack.pop();
+  ensureActiveLayerValid();
+  updateHistoryButtons();
+  fullRefresh();
+}
+function updateHistoryButtons(){
+  el('undoBtn').disabled = undoStack.length===0;
+  el('redoBtn').disabled = redoStack.length===0;
+}
+
+/* ===================== PROJECT INIT ===================== */
+function createNewProject(name, width, height, tileSize){
+  state = defaultProject(name, width, height, tileSize);
+  imageCache = {}; dataURLCache = {};
+  undoStack = []; redoStack = [];
+  selectedTilesetId = null; selectedTileIndex = null;
+  activeLayerId = state.layers[0].id;
+  updateHistoryButtons();
+  fullRefresh();
+  markDirty();
+}
+
+function ensureActiveLayerValid(){
+  if(!state.layers.find(l=>l.id===activeLayerId)){
+    activeLayerId = state.layers.length ? state.layers[0].id : null;
+  }
+  const layer = getActiveLayer();
+  selectedTilesetId = layer ? layer.tileset : null;
+}
+
+function getActiveLayer(){
+  return state.layers.find(l=>l.id===activeLayerId) || null;
+}
+
+function selectLayer(layerId){
+  activeLayerId = layerId;
+  const layer = getActiveLayer();
+  selectedTilesetId = layer ? layer.tileset : null;
+  renderLayerList();
+  renderLayerSettings();
+  renderTilesetList();
+  renderTilePicker();
+  updateStatus();
+}
+
+/* ===================== TILESETS ===================== */
+function loadImageFromDataURL(dataURL){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = dataURL;
+  });
+}
+
+async function addTilesetFromFile(file){
+  const dataURL = await new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=>res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  const img = await loadImageFromDataURL(dataURL);
+  const ts = state.tileSize;
+  const columns = Math.max(1, Math.floor(img.width/ts));
+  const rows = Math.max(1, Math.floor(img.height/ts));
+  const id = uid('tileset');
+  const name = file.name.replace(/\.png$/i,'');
+  pushHistory();
+  state.tilesets.push({ id, name, image: name+'.png', columns, rows, tileCount: columns*rows, width: img.width, height: img.height });
+  imageCache[id] = img;
+  // store dataURL separately for export/autosave (kept out of undo snapshots via a side map)
+  dataURLCache[id] = dataURL;
+  selectedTilesetId = id;
+  const layer = getActiveLayer();
+  if(layer && !layer.tileset) layer.tileset = id;
+  renderTilesetList();
+  renderLayerList();
+  renderLayerSettings();
+  renderTilePicker();
+  markDirty();
+}
+let dataURLCache = {}; // tilesetId -> dataURL (persisted alongside state on export/autosave)
+
+function removeTileset(id){
+  if(!confirm('이 타일셋을 사용하는 레이어의 타일 배치는 유지되지만, 렌더링되지 않을 수 있습니다. 삭제하시겠습니까?')) return;
+  pushHistory();
+  state.tilesets = state.tilesets.filter(t=>t.id!==id);
+  state.layers.forEach(l=>{ if(l.tileset===id) l.tileset=null; });
+  if(selectedTilesetId===id) selectedTilesetId = state.tilesets[0]?.id || null;
+  renderTilesetList();
+  renderLayerList();
+  renderTilePicker();
+  markDirty();
+}
+
+function renderTilesetList(){
+  const wrap = el('tilesetList');
+  wrap.innerHTML = '';
+  if(!state.tilesets.length){
+    wrap.innerHTML = '<div class="hint">등록된 타일셋이 없습니다.</div>';
+    return;
+  }
+  state.tilesets.forEach(ts=>{
+    const div = document.createElement('div');
+    div.className = 'tileset-item'+(ts.id===selectedTilesetId?' selected':'');
+    div.innerHTML = `
+      <div class="row">
+        <div>
+          <div class="tileset-name">${escapeHtml(ts.name)}</div>
+          <div class="tileset-meta">${ts.columns}×${ts.rows} tiles · ${ts.width}×${ts.height}px</div>
+        </div>
+        <button data-remove="${ts.id}" class="icon danger" title="삭제">✕</button>
+      </div>`;
+    div.addEventListener('click',(e)=>{
+      if(e.target.closest('[data-remove]')) return;
+      const layer = getActiveLayer();
+      if(layer && layer.tileset && layer.tileset !== ts.id){
+        const oldTs = state.tilesets.find(t=>t.id===layer.tileset);
+        const ok = confirm(
+          `레이어 하나에는 하나의 타일셋만 사용할 수 있습니다.\n\n"${layer.name}" 레이어의 타일셋을 "${oldTs?oldTs.name:'?'}" 에서 "${ts.name}" (으)로 변경하시겠습니까?\n(이미 배치된 타일 인덱스는 유지되지만, 새 타일셋 기준으로 다르게 표시될 수 있습니다.)`
+        );
+        if(!ok) return; // keep current tileset, do not switch selection
+        pushHistory();
+        layer.tileset = ts.id;
+        renderLayerList();
+        renderLayerSettings();
+      } else if(layer && !layer.tileset){
+        pushHistory();
+        layer.tileset = ts.id;
+        renderLayerList();
+        renderLayerSettings();
+      }
+      selectedTilesetId = ts.id;
+      renderTilesetList();
+      renderTilePicker();
+      markDirty();
+    });
+    div.querySelector('[data-remove]').addEventListener('click', ()=>removeTileset(ts.id));
+    wrap.appendChild(div);
+  });
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ===================== TILE PICKER ===================== */
+function renderTilePicker(){
+  const layer = getActiveLayer();
+  el('pickerLayerName').textContent = layer ? layer.name : '-';
+  el('currentLayerName').textContent = layer ? layer.name : '(선택된 레이어 없음)';
+  let tsId = layer ? layer.tileset : null;
+  const tsForBanner = tsId ? state.tilesets.find(t=>t.id===tsId) : null;
+  el('currentLayerTileset').textContent = tsForBanner ? tsForBanner.name : '지정된 타일셋 없음';
+  if(!tsId){ pctx.clearRect(0,0,tilePicker.width,tilePicker.height); tilePicker.width=1; tilePicker.height=1; el('selectedTileLabel').textContent='레이어에 타일셋을 지정하세요'; return; }
+  const ts = state.tilesets.find(t=>t.id===tsId);
+  const img = imageCache[tsId];
+  if(!ts || !img){ el('selectedTileLabel').textContent='이미지 로드 중…'; return; }
+  tilePicker.width = ts.width;
+  tilePicker.height = ts.height;
+  pctx.imageSmoothingEnabled = false;
+  pctx.clearRect(0,0,tilePicker.width,tilePicker.height);
+  pctx.drawImage(img,0,0);
+  // grid overlay
+  pctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  pctx.lineWidth = 1;
+  for(let x=0;x<=ts.columns;x++){ pctx.beginPath(); pctx.moveTo(x*state.tileSize+0.5,0); pctx.lineTo(x*state.tileSize+0.5, ts.rows*state.tileSize); pctx.stroke(); }
+  for(let y=0;y<=ts.rows;y++){ pctx.beginPath(); pctx.moveTo(0,y*state.tileSize+0.5); pctx.lineTo(ts.columns*state.tileSize, y*state.tileSize+0.5); pctx.stroke(); }
+  // highlight selection
+  if(selectedTileIndex!=null && selectedTilesetId===tsId){
+    const col = selectedTileIndex % ts.columns;
+    const row = Math.floor(selectedTileIndex/ts.columns);
+    pctx.strokeStyle = '#5b8cff'; pctx.lineWidth = 2;
+    pctx.strokeRect(col*state.tileSize+1,row*state.tileSize+1,state.tileSize-2,state.tileSize-2);
+    el('selectedTileLabel').textContent = `#${selectedTileIndex} (${col},${row})`;
+  } else {
+    el('selectedTileLabel').textContent = '없음';
+  }
+}
+
+tilePicker.addEventListener('click',(e)=>{
+  const layer = getActiveLayer();
+  if(!layer || !layer.tileset) return;
+  const ts = state.tilesets.find(t=>t.id===layer.tileset);
+  const rect = tilePicker.getBoundingClientRect();
+  const scaleX = tilePicker.width/rect.width, scaleY = tilePicker.height/rect.height;
+  const x = (e.clientX-rect.left)*scaleX, y=(e.clientY-rect.top)*scaleY;
+  const col = Math.floor(x/state.tileSize), row = Math.floor(y/state.tileSize);
+  if(col<0||row<0||col>=ts.columns||row>=ts.rows) return;
+  selectedTilesetId = ts.id;
+  selectedTileIndex = row*ts.columns+col;
+  renderTilePicker();
+});
+
+/* ===================== LAYERS ===================== */
+function renderLayerList(){
+  const wrap = el('layerList');
+  wrap.innerHTML = '';
+  // show topmost first
+  [...state.layers].reverse().forEach(layer=>{
+    const div = document.createElement('div');
+    div.className = 'layer-item'+(layer.id===activeLayerId?' active':'');
+    const tsName = layer.tileset ? (state.tilesets.find(t=>t.id===layer.tileset)?.name || '?') : '(없음)';
+    div.innerHTML = `
+      <button class="icon" data-vis="${layer.id}" title="표시/숨기기">${layer.visible?'👁':'🚫'}</button>
+      <div>
+        <div class="name">${escapeHtml(layer.name)}</div>
+        <div class="sub">${escapeHtml(tsName)}</div>
+      </div>
+      <button data-up="${layer.id}" class="icon" title="위로">↑</button>
+      <button data-down="${layer.id}" class="icon" title="아래로">↓</button>
+      <button data-del="${layer.id}" class="icon danger" title="삭제">✕</button>
+    `;
+    div.addEventListener('click',(e)=>{
+      if(e.target.closest('button')) return;
+      selectLayer(layer.id);
+    });
+    div.querySelector('[data-vis]').addEventListener('click',()=>{
+      pushHistory();
+      layer.visible = !layer.visible;
+      renderLayerList(); render();
+      markDirty();
+    });
+    div.querySelector('[data-up]').addEventListener('click',()=>moveLayer(layer.id,1));
+    div.querySelector('[data-down]').addEventListener('click',()=>moveLayer(layer.id,-1));
+    div.querySelector('[data-del]').addEventListener('click',()=>deleteLayer(layer.id));
+    wrap.appendChild(div);
+  });
+}
+
+function moveLayer(id, dir){
+  const idx = state.layers.findIndex(l=>l.id===id);
+  const newIdx = idx+dir;
+  if(newIdx<0||newIdx>=state.layers.length) return;
+  pushHistory();
+  const [item] = state.layers.splice(idx,1);
+  state.layers.splice(newIdx,0,item);
+  renderLayerList(); render();
+  markDirty();
+}
+
+function deleteLayer(id){
+  if(state.layers.length<=1){ alert('최소 1개의 레이어가 필요합니다.'); return; }
+  if(!confirm('이 레이어를 삭제하시겠습니까?')) return;
+  pushHistory();
+  state.layers = state.layers.filter(l=>l.id!==id);
+  ensureActiveLayerValid();
+  renderLayerList(); renderLayerSettings(); renderTilesetList(); renderTilePicker(); render();
+  markDirty();
+}
+
+el('addLayerBtn').addEventListener('click',()=>{
+  pushHistory();
+  const layer = { id: uid('layer'), name:'Layer '+(state.layers.length+1), tileset:null, visible:true, data:new Array(state.width*state.height).fill(EMPTY) };
+  state.layers.push(layer);
+  selectLayer(layer.id);
+  render();
+  markDirty();
+});
+
+function renderLayerSettings(){
+  const layer = getActiveLayer();
+  const wrap = el('layerSettings');
+  if(!layer){ wrap.innerHTML = '레이어를 선택하세요.'; return; }
+  wrap.innerHTML = `
+    <label class="field" style="margin-bottom:8px;">이름 <input type="text" id="layerNameInput" value="${escapeHtml(layer.name)}"></label>
+    <label class="field">타일셋
+      <select id="layerTilesetSelect" style="flex:1;">
+        <option value="">(없음)</option>
+        ${state.tilesets.map(t=>`<option value="${t.id}" ${t.id===layer.tileset?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+    </label>
+  `;
+  el('layerNameInput').addEventListener('change',(e)=>{
+    pushHistory();
+    layer.name = e.target.value || layer.name;
+    renderLayerList();
+    markDirty();
+  });
+  el('layerTilesetSelect').addEventListener('change',(e)=>{
+    const newId = e.target.value || null;
+    if(layer.tileset && newId && newId!==layer.tileset){
+      const oldTs = state.tilesets.find(t=>t.id===layer.tileset);
+      const newTs = state.tilesets.find(t=>t.id===newId);
+      const ok = confirm(
+        `레이어 하나에는 하나의 타일셋만 사용할 수 있습니다.\n\n"${layer.name}" 레이어의 타일셋을 "${oldTs?oldTs.name:'?'}" 에서 "${newTs?newTs.name:'?'}" (으)로 변경하시겠습니까?\n(이미 배치된 타일 인덱스는 유지되지만, 새 타일셋 기준으로 다르게 표시될 수 있습니다.)`
+      );
+      if(!ok){ e.target.value = layer.tileset; return; }
+    }
+    pushHistory();
+    layer.tileset = newId;
+    selectedTilesetId = newId;
+    renderLayerList(); renderTilesetList(); renderTilePicker();
+    markDirty();
+  });
+}
+
+/* ===================== MAP SETTINGS ===================== */
+function syncMapSettingsInputs(){
+  el('mapWidthInput').value = state.width;
+  el('mapHeightInput').value = state.height;
+  el('tileSizeInput').value = state.tileSize;
+}
+el('applyMapSettingsBtn').addEventListener('click',()=>{
+  const newW = Math.max(1, parseInt(el('mapWidthInput').value)||state.width);
+  const newH = Math.max(1, parseInt(el('mapHeightInput').value)||state.height);
+  const newTS = Math.max(1, parseInt(el('tileSizeInput').value)||state.tileSize);
+  pushHistory();
+  resizeMap(newW,newH);
+  if(newTS!==state.tileSize){
+    state.tileSize = newTS;
+    // recompute tileset grid metrics
+    state.tilesets.forEach(t=>{
+      t.columns = Math.max(1, Math.floor(t.width/newTS));
+      t.rows = Math.max(1, Math.floor(t.height/newTS));
+      t.tileCount = t.columns*t.rows;
+    });
+  }
+  fullRefresh();
+  markDirty();
+});
+
+function resizeMap(newW,newH){
+  const remap = (arr, fill)=>{
+    const out = new Array(newW*newH).fill(fill);
+    const w = Math.min(newW, state.width), h = Math.min(newH, state.height);
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        out[y*newW+x] = arr[y*state.width+x];
+      }
+    }
+    return out;
+  };
+  state.layers.forEach(l=>{ l.data = remap(l.data, EMPTY); });
+  state.collision = remap(state.collision, 0);
+  state.tags = state.tags.filter(t=>t.x<newW && t.y<newH);
+  state.width = newW; state.height = newH;
+}
+
+/* ===================== TAGS ===================== */
+function renderTagList(){
+  el('tagCount').textContent = state.tags.length;
+  const wrap = el('tagList');
+  wrap.innerHTML = '';
+  if(!state.tags.length){ wrap.innerHTML = '<div class="hint">등록된 태그가 없습니다.</div>'; return; }
+  state.tags.forEach((t,i)=>{
+    const div = document.createElement('div');
+    div.className = 'tag-item';
+    const display = t.value ? `${escapeHtml(t.key)}: ${escapeHtml(t.value)}` : escapeHtml(t.key);
+    div.innerHTML = `<span>🏷 ${display} <span class="coord">(${t.x}, ${t.y})</span></span>
+      <button class="icon danger" data-i="${i}">✕</button>`;
+    div.querySelector('button').addEventListener('click',()=>{
+      pushHistory();
+      state.tags.splice(i,1);
+      renderTagList(); render();
+      markDirty();
+    });
+    wrap.appendChild(div);
+  });
+}
+
+let pendingTagCoord = null;
+function openTagModal(x,y){
+  pendingTagCoord = {x,y};
+  el('tagModalCoord').textContent = `좌표: (${x}, ${y})`;
+  el('tagPreset').value = 'PLAYER_SPAWN';
+  el('tagCustom').style.display = 'none';
+  el('tagCustom').value = '';
+  el('tagValueInput').value = '';
+  const existing = state.tags.filter(t=>t.x===x&&t.y===y);
+  el('tagModalExisting').innerHTML = existing.length
+    ? '<div class="section-title">이 좌표의 기존 태그</div>' + existing.map((t,i)=>{
+        const globalIdx = state.tags.indexOf(t);
+        const display = t.value ? `${escapeHtml(t.key)}: ${escapeHtml(t.value)}` : escapeHtml(t.key);
+        return `<div class="tag-item"><span>${display}</span><button class="icon danger" data-del="${globalIdx}">✕</button></div>`;
+      }).join('')
+    : '';
+  el('tagModalExisting').querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      pushHistory();
+      state.tags.splice(parseInt(btn.dataset.del),1);
+      renderTagList(); render();
+      openTagModal(x,y);
+      markDirty();
+    });
+  });
+  el('tagModal').classList.add('show');
+}
+el('tagPreset').addEventListener('change',(e)=>{
+  el('tagCustom').style.display = e.target.value==='__custom__' ? 'block' : 'none';
+});
+el('tagCancel').addEventListener('click',()=>el('tagModal').classList.remove('show'));
+el('tagAdd').addEventListener('click',()=>{
+  const preset = el('tagPreset').value;
+  const key = preset==='__custom__' ? (el('tagCustom').value||'').trim().toUpperCase() : preset;
+  const value = (el('tagValueInput').value||'').trim();
+  if(!key) return;
+  pushHistory();
+  state.tags.push({x:pendingTagCoord.x, y:pendingTagCoord.y, key, value});
+  renderTagList(); render();
+  el('tagModal').classList.remove('show');
+  markDirty();
+});
+
+/* ===================== RENDERING ===================== */
+function render(){
+  const w = state.width, h = state.height, ts = state.tileSize;
+  mapCanvas.width = w*ts;
+  mapCanvas.height = h*ts;
+  mapCanvas.style.width = (w*ts*zoom)+'px';
+  mapCanvas.style.height = (h*ts*zoom)+'px';
+  mctx.imageSmoothingEnabled = false;
+  mctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);
+
+  // layers bottom -> top
+  state.layers.forEach(layer=>{
+    if(!layer.visible) return;
+    const tsDef = layer.tileset ? state.tilesets.find(t=>t.id===layer.tileset) : null;
+    const img = layer.tileset ? imageCache[layer.tileset] : null;
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const v = layer.data[y*w+x];
+        if(v===EMPTY || !tsDef || !img) continue;
+        const col = v % tsDef.columns, row = Math.floor(v/tsDef.columns);
+        mctx.drawImage(img, col*ts, row*ts, ts, ts, x*ts, y*ts, ts, ts);
+      }
+    }
+  });
+
+  // collision overlay
+  if(currentMode==='collision'){
+    mctx.fillStyle = 'rgba(255,92,114,0.45)';
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+      if(state.collision[y*w+x]) mctx.fillRect(x*ts,y*ts,ts,ts);
+    }
+  }
+
+  // tags overlay
+  if(currentMode==='tag' || true){
+    state.tags.forEach(t=>{
+      mctx.save();
+      mctx.fillStyle = 'rgba(255,180,84,0.85)';
+      mctx.beginPath();
+      mctx.arc(t.x*ts+ts/2, t.y*ts+ts/2, Math.max(3,ts*0.22), 0, Math.PI*2);
+      mctx.fill();
+      mctx.restore();
+    });
+  }
+
+  // grid
+  if(showGrid){
+    mctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    mctx.lineWidth = 1;
+    for(let x=0;x<=w;x++){ mctx.beginPath(); mctx.moveTo(x*ts+0.5,0); mctx.lineTo(x*ts+0.5,h*ts); mctx.stroke(); }
+    for(let y=0;y<=h;y++){ mctx.beginPath(); mctx.moveTo(0,y*ts+0.5); mctx.lineTo(w*ts,y*ts+0.5); mctx.stroke(); }
+  }
+
+  // rectangle preview
+  if(rectStart && isPainting && currentTool==='rect'){
+    const cur = lastMouseTile;
+    if(cur){
+      const x0=Math.min(rectStart.x,cur.x), x1=Math.max(rectStart.x,cur.x);
+      const y0=Math.min(rectStart.y,cur.y), y1=Math.max(rectStart.y,cur.y);
+      mctx.strokeStyle = '#5b8cff'; mctx.lineWidth=2;
+      mctx.strokeRect(x0*ts+1,y0*ts+1,(x1-x0+1)*ts-2,(y1-y0+1)*ts-2);
+    }
+  }
+  el('statusSize').textContent = `${w} × ${h} tiles · ${ts}px`;
+}
+
+function fullRefresh(){
+  el('projectNameInput').value = state.name || 'Untitled Project';
+  syncMapSettingsInputs();
+  renderTilesetList();
+  renderLayerList();
+  renderLayerSettings();
+  renderTilePicker();
+  renderTagList();
+  updateStatus();
+  render();
+}
+
+/* ===================== PAINTING / INTERACTION ===================== */
+let lastMouseTile = null;
+
+function tileFromEvent(e){
+  const rect = mapCanvas.getBoundingClientRect();
+  const scaleX = mapCanvas.width/rect.width, scaleY = mapCanvas.height/rect.height;
+  const px = (e.clientX-rect.left)*scaleX, py=(e.clientY-rect.top)*scaleY;
+  const x = Math.floor(px/state.tileSize), y = Math.floor(py/state.tileSize);
+  if(x<0||y<0||x>=state.width||y>=state.height) return null;
+  return {x,y};
+}
+
+function paintValue(){
+  return currentTool==='eraser' ? EMPTY : selectedTileIndex;
+}
+
+function applyTilePaint(x,y,value){
+  const layer = getActiveLayer();
+  if(!layer) return;
+  layer.data[y*state.width+x] = value;
+}
+
+function floodFill(x0,y0,getArr,setArr,newVal){
+  const arr = getArr();
+  const target = arr[y0*state.width+x0];
+  if(target===newVal) return;
+  const stack=[[x0,y0]];
+  const w=state.width,h=state.height;
+  const visited = new Set();
+  while(stack.length){
+    const [x,y]=stack.pop();
+    const idx=y*w+x;
+    if(x<0||y<0||x>=w||y>=h) continue;
+    if(visited.has(idx)) continue;
+    visited.add(idx);
+    if(arr[idx]!==target) continue;
+    setArr(idx,newVal);
+    stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+  }
+}
+
+function handlePointerDown(e){
+  if(e.button!==0) return; // only left click paints; right click is reserved for panning
+  const tile = tileFromEvent(e);
+  if(!tile) return;
+  lastMouseTile = tile;
+
+  if(currentMode==='tag'){
+    if(currentTool==='eraser'){
+      const idx = state.tags.findIndex(t=>t.x===tile.x&&t.y===tile.y);
+      if(idx>=0){ pushHistory(); state.tags.splice(idx,1); renderTagList(); render(); markDirty(); }
+    } else {
+      openTagModal(tile.x, tile.y);
+    }
+    return;
+  }
+
+  pushHistory();
+  isPainting = true;
+
+  if(currentMode==='collision'){
+    const val = currentTool==='eraser' ? 0 : 1;
+    if(currentTool==='rect'){ rectStart = tile; }
+    else if(currentTool==='bucket'){
+      floodFill(tile.x,tile.y,
+        ()=>state.collision,
+        (idx,v)=>state.collision[idx]=v,
+        val);
+      render(); markDirty(); isPainting=false;
+    } else {
+      state.collision[tile.y*state.width+tile.x] = val;
+      lastPaintedIdx = tile.y*state.width+tile.x;
+      render(); markDirty();
+    }
+    return;
+  }
+
+  // tile mode
+  const layer = getActiveLayer();
+  if(!layer || !layer.tileset){ isPainting=false; undoStack.pop(); return; }
+  if(selectedTileIndex==null && currentTool!=='eraser'){ isPainting=false; undoStack.pop(); return; }
+
+  if(currentTool==='rect'){
+    rectStart = tile;
+  } else if(currentTool==='bucket'){
+    floodFill(tile.x,tile.y,
+      ()=>layer.data,
+      (idx,v)=>layer.data[idx]=v,
+      paintValue());
+    render(); markDirty(); isPainting=false;
+  } else {
+    applyTilePaint(tile.x,tile.y,paintValue());
+    lastPaintedIdx = tile.y*state.width+tile.x;
+    render(); markDirty();
+  }
+}
+
+function handlePointerMove(e){
+  const tile = tileFromEvent(e);
+  updateStatus(tile);
+  if(!tile) return;
+  lastMouseTile = tile;
+  if(!isPainting) return;
+
+  if(currentMode==='tag') return;
+
+  if(currentTool==='rect'){
+    render(); // preview
+    return;
+  }
+
+  if(currentMode==='collision'){
+    const idx = tile.y*state.width+tile.x;
+    if(idx===lastPaintedIdx) return;
+    const val = currentTool==='eraser' ? 0 : 1;
+    state.collision[idx] = val;
+    lastPaintedIdx = idx;
+    render(); markDirty();
+    return;
+  }
+
+  const layer = getActiveLayer();
+  if(!layer || !layer.tileset) return;
+  const idx = tile.y*state.width+tile.x;
+  if(idx===lastPaintedIdx) return;
+  applyTilePaint(tile.x,tile.y,paintValue());
+  lastPaintedIdx = idx;
+  render(); markDirty();
+}
+
+function handlePointerUp(){
+  if(isPainting && currentTool==='rect' && rectStart && lastMouseTile && currentMode!=='tag'){
+    const x0=Math.min(rectStart.x,lastMouseTile.x), x1=Math.max(rectStart.x,lastMouseTile.x);
+    const y0=Math.min(rectStart.y,lastMouseTile.y), y1=Math.max(rectStart.y,lastMouseTile.y);
+    if(currentMode==='collision'){
+      const val = currentTool==='eraser'?0:1;
+      for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) state.collision[y*state.width+x]=val;
+    } else {
+      const layer = getActiveLayer();
+      if(layer && layer.tileset){
+        const val = paintValue();
+        for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) applyTilePaint(x,y,val);
+      }
+    }
+    markDirty();
+  }
+  if(!isPainting){
+    // nothing painted, drop the speculative history entry if any was pushed with no change
+  }
+  isPainting = false;
+  rectStart = null;
+  lastPaintedIdx = -1;
+  render();
+}
+
+mapCanvas.addEventListener('mousedown', handlePointerDown);
+window.addEventListener('mousemove', handlePointerMove);
+window.addEventListener('mouseup', handlePointerUp);
+mapCanvas.addEventListener('contextmenu', e=>e.preventDefault());
+
+/* ---- Right-click drag to pan, wheel to zoom ---- */
+const canvasWrap = el('canvas-wrap');
+let isPanning = false;
+let panStart = null;
+canvasWrap.addEventListener('contextmenu', e=>e.preventDefault());
+canvasWrap.addEventListener('mousedown', (e)=>{
+  if(e.button===2){
+    isPanning = true;
+    panStart = { x:e.clientX, y:e.clientY, sl:canvasWrap.scrollLeft, st:canvasWrap.scrollTop };
+    e.preventDefault();
+  }
+});
+window.addEventListener('mousemove',(e)=>{
+  if(isPanning && panStart){
+    canvasWrap.scrollLeft = panStart.sl - (e.clientX - panStart.x);
+    canvasWrap.scrollTop = panStart.st - (e.clientY - panStart.y);
+  }
+});
+window.addEventListener('mouseup',(e)=>{
+  if(e.button===2){ isPanning=false; panStart=null; }
+});
+canvasWrap.addEventListener('wheel',(e)=>{
+  e.preventDefault();
+  const oldZoom = zoom;
+  const dir = e.deltaY < 0 ? 1 : -1;
+  let newZoom = Math.round((zoom + dir*0.1)*100)/100;
+  newZoom = Math.min(4, Math.max(0.25, newZoom));
+  if(newZoom===oldZoom) return;
+  const rect = canvasWrap.getBoundingClientRect();
+  const cx = e.clientX - rect.left + canvasWrap.scrollLeft;
+  const cy = e.clientY - rect.top + canvasWrap.scrollTop;
+  const ratio = newZoom/oldZoom;
+  zoom = newZoom;
+  applyZoom();
+  canvasWrap.scrollLeft = cx*ratio - (e.clientX - rect.left);
+  canvasWrap.scrollTop = cy*ratio - (e.clientY - rect.top);
+}, {passive:false});
+
+function updateStatus(tile){
+  if(tile===undefined) tile = lastMouseTile;
+  el('statusCoord').textContent = tile ? `${tile.x}, ${tile.y}` : '-, -';
+  el('statusMode').textContent = 'Mode: '+({tile:'Tile',collision:'Collision',tag:'Tag'})[currentMode];
+  el('statusTool').textContent = 'Tool: '+currentTool;
+  const layer = getActiveLayer();
+  el('statusLayer').textContent = 'Layer: '+(layer?layer.name:'-');
+}
+
+/* ===================== TOOLBAR EVENTS ===================== */
+document.querySelectorAll('#toolGroup button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#toolGroup button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTool = btn.dataset.tool;
+    updateStatus();
+  });
+});
+document.querySelectorAll('#modeGroup button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#modeGroup button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    updateStatus();
+    render();
+  });
+});
+document.querySelectorAll('#sidebar .tabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#sidebar .tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#sidebar .panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    el('panel-'+btn.dataset.panel).classList.add('active');
+  });
+});
+
+el('gridBtn').addEventListener('click',()=>{
+  showGrid = !showGrid;
+  el('gridBtn').classList.toggle('active', showGrid);
+  render();
+});
+el('zoomInBtn').addEventListener('click',()=>{ zoom=Math.min(4, zoom+0.25); applyZoom(); });
+el('zoomOutBtn').addEventListener('click',()=>{ zoom=Math.max(0.25, zoom-0.25); applyZoom(); });
+function applyZoom(){
+  el('zoomLabel').textContent = Math.round(zoom*100)+'%';
+  render();
+}
+
+el('undoBtn').addEventListener('click', undo);
+el('redoBtn').addEventListener('click', redo);
+
+window.addEventListener('keydown',(e)=>{
+  if(e.target.tagName==='INPUT' || e.target.tagName==='SELECT') return;
+  const cmd = e.ctrlKey || e.metaKey;
+  if(cmd && e.key.toLowerCase()==='z' && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if(cmd && ((e.key.toLowerCase()==='z' && e.shiftKey) || e.key.toLowerCase()==='y')){ e.preventDefault(); redo(); }
+  else if(e.key==='b') setTool('pencil');
+  else if(e.key==='e') setTool('eraser');
+  else if(e.key==='r') setTool('rect');
+  else if(e.key==='g') setTool('bucket');
+});
+function setTool(t){
+  currentTool = t;
+  document.querySelectorAll('#toolGroup button').forEach(b=>b.classList.toggle('active', b.dataset.tool===t));
+  updateStatus();
+}
+
+/* ===================== DROPZONE / TILESET UPLOAD ===================== */
+el('dropzone').addEventListener('click',()=>el('tilesetFile').click());
+el('tilesetFile').addEventListener('change',(e)=>{
+  const file = e.target.files[0];
+  if(file) addTilesetFromFile(file);
+  e.target.value='';
+});
+el('dropzone').addEventListener('dragover',e=>{e.preventDefault(); el('dropzone').style.borderColor='var(--accent)';});
+el('dropzone').addEventListener('dragleave',()=>{el('dropzone').style.borderColor='var(--line)';});
+el('dropzone').addEventListener('drop',e=>{
+  e.preventDefault();
+  el('dropzone').style.borderColor='var(--line)';
+  const file = e.dataTransfer.files[0];
+  if(file && file.type==='image/png') addTilesetFromFile(file);
+});
+
+/* ===================== NEW PROJECT MODAL ===================== */
+el('newProjectBtn').addEventListener('click',()=>el('newProjectModal').classList.add('show'));
+el('npCancel').addEventListener('click',()=>el('newProjectModal').classList.remove('show'));
+el('npCreate').addEventListener('click',()=>{
+  const name = (el('npName').value||'').trim() || 'Untitled Project';
+  const w = Math.max(1,parseInt(el('npWidth').value)||64);
+  const h = Math.max(1,parseInt(el('npHeight').value)||32);
+  const ts = Math.max(1,parseInt(el('npTileSize').value)||16);
+  createNewProject(name,w,h,ts);
+  el('newProjectModal').classList.remove('show');
+});
+
+el('projectNameInput').addEventListener('change',(e)=>{
+  const val = (e.target.value||'').trim() || 'Untitled Project';
+  state.name = val;
+  e.target.value = val;
+  markDirty();
+});
+
+/* ===================== SAVE / LOAD (full project, with images) ===================== */
+function buildProjectSaveObject(){
+  return {
+    version: state.version,
+    name: state.name,
+    width: state.width,
+    height: state.height,
+    tileSize: state.tileSize,
+    tilesets: state.tilesets.map(t=>({
+      id:t.id, name:t.name, image:t.image, columns:t.columns, rows:t.rows, tileCount:t.tileCount,
+      width:t.width, height:t.height, imageData: dataURLCache[t.id] || null
+    })),
+    layers: state.layers.map(l=>({
+      name:l.name, tileset:l.tileset, visible:l.visible, data:l.data
+    })),
+    collision: state.collision,
+    tags: state.tags
+  };
+}
+
+/* ===================== EXPORT (game-ready, no image data) ===================== */
+function buildGameExportObject(){
+  return {
+    name: state.name,
+    width: state.width,
+    height: state.height,
+    tileSize: state.tileSize,
+    layers: state.layers.map(l=>({
+      tileset: state.tilesets.find(t => t.id === l.tileset).image, data:l.data
+    })),
+    collision: state.collision,
+    tags: state.tags
+  };
+}
+
+function safeFileName(){
+  return (state.name||'project').trim().replace(/[^a-zA-Z0-9가-힣_\-]+/g,'_') || 'project';
+}
+
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+el('saveProjectBtn').addEventListener('click',()=>{
+  downloadJSON(buildProjectSaveObject(), safeFileName()+'.project.json');
+});
+
+el('exportGameBtn').addEventListener('click',()=>{
+  downloadJSON(buildGameExportObject(), safeFileName()+'.json');
+});
+
+/* ---- Final export: tileset images + map JSON bundled as .zip ---- */
+el('exportZipBtn').addEventListener('click', async ()=>{
+  if(typeof JSZip==='undefined'){
+    alert('ZIP 라이브러리를 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해주세요.');
+    return;
+  }
+  if(!state.tilesets.length){
+    if(!confirm('등록된 타일셋 이미지가 없습니다. JSON만 포함하여 내보내시겠습니까?')) return;
+  }
+  const zip = new JSZip();
+  const usedNames = new Set();
+  let missingImages = false;
+
+  const tilesetsForExport = state.tilesets.map(t=>{
+    let filename = (t.image || (t.name+'.png')).split('/').pop();
+    if(!/\.png$/i.test(filename)) filename += '.png';
+    let finalName = filename, n = 1;
+    while(usedNames.has(finalName)){
+      finalName = filename.replace(/\.png$/i, `_${n}.png`);
+      n++;
+    }
+    usedNames.add(finalName);
+
+    const dataURL = dataURLCache[t.id];
+    if(dataURL){
+      zip.file(finalName, dataURL.split(',')[1], {base64:true});
+    } else {
+      missingImages = true;
+    }
+    return { id:t.id, image: finalName, columns:t.columns, rows:t.rows };
+  });
+
+  const exportObj = {
+    version: state.version,
+    name: state.name,
+    width: state.width,
+    height: state.height,
+    tileSize: state.tileSize,
+    tilesets: tilesetsForExport,
+    layers: state.layers.map(l=>({ name:l.name, tileset:l.tileset, visible:l.visible, data:l.data })),
+    collision: state.collision,
+    tags: state.tags
+  };
+  zip.file(safeFileName()+'.json', JSON.stringify(exportObj, null, 2));
+
+  const zipBlob = await zip.generateAsync({type:'blob'});
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = safeFileName()+'.zip';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  if(missingImages){
+    alert('일부 타일셋의 이미지 데이터를 찾지 못해 ZIP에 포함되지 않았습니다. JSON의 타일 인덱스는 정상적으로 포함되었습니다.');
+  }
+});
+
+el('loadProjectBtn').addEventListener('click',()=>el('importFile').click());
+el('importFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  e.target.value='';
+  if(!file) return;
+  const text = await file.text();
+  try{
+    const obj = JSON.parse(text);
+    await loadProjectFromObject(obj);
+  }catch(err){
+    alert('JSON 파일을 불러오는 중 오류가 발생했습니다: '+err.message);
+  }
+});
+
+async function loadProjectFromObject(obj){
+  const newTilesets = [];
+  imageCache = {}; dataURLCache = {};
+  for(const t of (obj.tilesets||[])){
+    const id = t.id || uid('tileset');
+    newTilesets.push({ id, name:t.name, image:t.image, columns:t.columns, rows:t.rows, tileCount:t.tileCount, width:t.width, height:t.height });
+    if(t.imageData){
+      dataURLCache[id] = t.imageData;
+      try{ imageCache[id] = await loadImageFromDataURL(t.imageData); }catch(e){}
+    }
+  }
+  state = {
+    version: obj.version||1,
+    name: obj.name || 'Untitled Project',
+    width: obj.width, height: obj.height, tileSize: obj.tileSize,
+    tilesets: newTilesets,
+    layers: (obj.layers||[]).map(l=>({
+      id: uid('layer'), name:l.name, tileset:l.tileset, visible: l.visible!==false,
+      data: l.data && l.data.length===obj.width*obj.height ? l.data.slice() : new Array(obj.width*obj.height).fill(EMPTY)
+    })),
+    collision: obj.collision && obj.collision.length===obj.width*obj.height ? obj.collision.slice() : new Array(obj.width*obj.height).fill(0),
+    tags: (obj.tags||[]).map(t=>({
+      x:t.x, y:t.y,
+      key: t.key || t.tag || 'TAG',
+      value: t.value!=null ? t.value : ''
+    }))
+  };
+  if(!state.layers.length){
+    state.layers.push({id:uid('layer'), name:'Ground', tileset:null, visible:true, data:new Array(state.width*state.height).fill(EMPTY)});
+  }
+  activeLayerId = state.layers[0].id;
+  selectedTilesetId = state.layers[0].tileset || null;
+  undoStack=[]; redoStack=[];
+  updateHistoryButtons();
+  fullRefresh();
+  markDirty();
+}
+
+/* ===================== AUTOSAVE (IndexedDB) ===================== */
+const DB_NAME='tilemap-editor-db', STORE='projects', KEY='autosave';
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME,1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(STORE); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function idbSet(key,val){
+  try{
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).put(val,key);
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = ()=>reject(tx.error);
+    });
+  }catch(e){ console.warn('autosave failed', e); }
+}
+async function idbGet(key){
+  try{
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readonly');
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = ()=>resolve(req.result);
+      req.onerror = ()=>reject(req.error);
+    });
+  }catch(e){ return null; }
+}
+async function idbDelete(key){
+  try{
+    const db = await openDB();
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete(key);
+  }catch(e){}
+}
+
+function markDirty(){ dirty = true; }
+
+async function doAutosave(){
+  if(!dirty || !state) return;
+  const obj = buildProjectSaveObject();
+  await idbSet(KEY, obj);
+  dirty = false;
+  el('autosaveHint').textContent = '자동 저장됨 · '+new Date().toLocaleTimeString('ko-KR');
+}
+setInterval(doAutosave, 15000);
+window.addEventListener('beforeunload', ()=>{ if(dirty) doAutosave(); });
+
+el('restoreBtn').addEventListener('click', async ()=>{
+  const saved = await idbGet(KEY);
+  if(saved) await loadProjectFromObject(saved);
+  el('autosaveBar').classList.remove('show');
+});
+el('dismissAutosaveBtn').addEventListener('click', async ()=>{
+  el('autosaveBar').classList.remove('show');
+  await idbDelete(KEY);
+});
+
+/* ===================== INIT ===================== */
+async function init(){
+  createNewProject('Untitled Project',64,32,16);
+  const saved = await idbGet(KEY);
+  if(saved){
+    el('autosaveBar').classList.add('show');
+  }
+}
+init();
+
+})();
+</script>
+</body>
+</html>
