@@ -1252,6 +1252,7 @@ el('exportZipBtn').addEventListener('click', async ()=>{
   });
 
   const exportObj = {
+    /*
     version: state.version,
     name: state.name,
     width: state.width,
@@ -1259,6 +1260,15 @@ el('exportZipBtn').addEventListener('click', async ()=>{
     tileSize: state.tileSize,
     tilesets: tilesetsForExport,
     layers: state.layers.map(l=>({ name:l.name, tileset:l.tileset, visible:l.visible, data:l.data })),
+    collision: state.collision,
+    tags: state.tags */
+    name: state.name,
+    width: state.width,
+    height: state.height,
+    tileSize: state.tileSize,
+    layers: state.layers.map(l=>({
+      tileset: state.tilesets.find(t => t.id === l.tileset).image, data:l.data
+    })),
     collision: state.collision,
     tags: state.tags
   };
