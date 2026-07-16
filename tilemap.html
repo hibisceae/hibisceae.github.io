@@ -294,14 +294,11 @@
     <div class="hint" style="margin-bottom:10px;" id="tagModalCoord">좌표: -</div>
     <label class="field" style="display:block;margin-bottom:4px;color:var(--text-1);">Key</label>
     <select id="tagPreset" style="width:100%;margin-bottom:8px;">
-      <option value="PLAYER_SPAWN">PLAYER_SPAWN</option>
-      <option value="NPC">NPC</option>
-      <option value="CHEST">CHEST</option>
       <option value="PORTAL">PORTAL</option>
-      <option value="SAVE_POINT">SAVE_POINT</option>
+      <option value="POSITION">POSITION</option>
       <option value="__custom__">직접 입력…</option>
     </select>
-    <input type="text" id="tagCustom" placeholder="태그 키 입력 (예: NPC_ID)" style="display:none;margin-bottom:8px;width:100%;">
+    <input type="text" id="tagCustom" placeholder="태그 키 입력 (예: PORTAL)" style="display:none;margin-bottom:8px;width:100%;">
     <label class="field" style="display:block;margin-bottom:4px;color:var(--text-1);">Value <span class="hint">(선택 사항)</span></label>
     <input type="text" id="tagValueInput" placeholder="값 입력 (예: guard_01)" style="width:100%;margin-bottom:8px;">
     <div id="tagModalExisting"></div>
@@ -746,7 +743,7 @@ let pendingTagCoord = null;
 function openTagModal(x,y){
   pendingTagCoord = {x,y};
   el('tagModalCoord').textContent = `좌표: (${x}, ${y})`;
-  el('tagPreset').value = 'PLAYER_SPAWN';
+  el('tagPreset').value = 'PORTAL';
   el('tagCustom').style.display = 'none';
   el('tagCustom').value = '';
   el('tagValueInput').value = '';
